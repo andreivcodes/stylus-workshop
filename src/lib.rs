@@ -13,6 +13,7 @@ sol! {
     event Visit(address indexed sender, string message);
     error InsufficientPayment(address visitor, uint256 payment);
     error TransferFailed(address recipient, uint256 amount);
+    error IndexOutOfBounds();
 }
 
 sol_storage! {
@@ -28,6 +29,7 @@ sol_storage! {
 pub enum VisitorBookErrors {
     InsufficientPayment(InsufficientPayment),
     TransferFailed(TransferFailed),
+    IndexOutOfBounds(IndexOutOfBounds),
 }
 
 #[public]
@@ -86,8 +88,10 @@ impl VisitorBook {
     }
 
     // Get visitor at specific index
-    pub fn get_visitor_at_index(&self, index: U256) -> Address {
-        self.visitors.get(index).unwrap()
+    pub fn get_visitor_at_index(&self, index: U256) -> Result<Address, VisitorBookErrors> {
+        self.visitors
+            .get(index)
+            .ok_or(VisitorBookErrors::IndexOutOfBounds(IndexOutOfBounds {}))
     }
 
     // Check if an address has visited
