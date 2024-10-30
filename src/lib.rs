@@ -1,45 +1,59 @@
 #![cfg_attr(not(feature = "export-abi"), no_main)]
 extern crate alloc;
 
-use stylus_sdk::{alloy_primitives::U256, prelude::*, storage::StorageU256};
+use stylus_sdk::{
+    alloy_primitives::{Address, U256},
+    msg,
+    prelude::*,
+};
 
-/// The solidity_storage macro allows this struct to be used in persistent
-/// storage. It accepts fields that implement the StorageType trait. Built-in
-/// storage types for Solidity ABI primitives are found under
-/// stylus_sdk::storage.
-#[storage]
-/// The entrypoint macro defines where Stylus execution begins. External methods
-/// are exposed by annotating an impl for this struct with #[external] as seen
-/// below.
-#[entrypoint]
-pub struct Counter {
-    count: StorageU256,
+sol_storage! {
+    #[entrypoint]
+    pub struct VisitorBook {
+        // Dynamic array to store visitor addresses
+        address[] visitors;
+        // Mapping to track if an address has already visited
+        mapping(address => bool) has_visited;
+        // Counter for total unique visitors
+        uint256 total_visitors;
+    }
 }
 
-/// Define an implementation of the Counter struct, defining a set_count
-/// as well as inc and dec methods using the features of the Stylus SDK.
 #[public]
-impl Counter {
-    /// Gets the number from storage.
-    pub fn get(&self) -> Result<U256, Vec<u8>> {
-        Ok(self.count.get())
+impl VisitorBook {
+    // Function to record a new visitor
+    pub fn sign_guestbook(&mut self) {
+        let visitor = msg::sender();
+
+        // Check if the address has already visited
+        if !self.has_visited.get(visitor) {
+            // Add to visitors array
+            self.visitors.push(visitor);
+            // Mark as visited
+            self.has_visited.setter(visitor).set(true);
+            // Increment total visitors
+            let current_count = self.total_visitors.get();
+            self.total_visitors.set(current_count + U256::from(1));
+        }
     }
 
-    /// Sets the count in storage to a user-specified value.
-    pub fn set_count(&mut self, count: U256) -> Result<(), Vec<u8>> {
-        self.count.set(count);
-        Ok(())
+    // Get total number of unique visitors
+    pub fn get_total_visitors(&self) -> U256 {
+        self.total_visitors.get()
     }
 
-    /// Increments count by 1
-    pub fn inc(&mut self) -> Result<(), Vec<u8>> {
-        let count = self.count.get() + U256::from(1);
-        self.set_count(count)
+    // Get visitor at specific index
+    pub fn get_visitor_at_index(&self, index: U256) -> Address {
+        self.visitors.get(index).unwrap()
     }
 
-    /// Decrements count by 1
-    pub fn dec(&mut self) -> Result<(), Vec<u8>> {
-        let count = self.count.get() - U256::from(1);
-        self.set_count(count)
+    // Check if an address has visited
+    pub fn has_address_visited(&self, address: Address) -> bool {
+        self.has_visited.get(address)
+    }
+
+    // Get all visitors (returns array length)
+    pub fn get_all_visitors_length(&self) -> U256 {
+        U256::from(self.visitors.len())
     }
 }
