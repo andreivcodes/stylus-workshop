@@ -3,23 +3,55 @@ extern crate alloc;
 
 use stylus_sdk::{
     alloy_primitives::{Address, U256},
-    msg,
+    alloy_sol_types::sol,
+    call::transfer_eth,
+    contract, evm, msg,
     prelude::*,
 };
+
+sol! {
+    event Visit(address indexed sender, string message);
+    error InsufficientPayment(address visitor, uint256 payment);
+    error TransferFailed(address recipient, uint256 amount);
+}
 
 sol_storage! {
     #[entrypoint]
     pub struct VisitorBook {
+        uint256 fee;
         address[] visitors;
         mapping(address => bool) has_visited;
     }
 }
 
+#[derive(SolidityError)]
+pub enum VisitorBookErrors {
+    InsufficientPayment(InsufficientPayment),
+    TransferFailed(TransferFailed),
+}
+
 #[public]
 impl VisitorBook {
+    pub fn initialize(&mut self) -> Result<(), VisitorBookErrors> {
+        // Initialize constants
+        self.fee.set(U256::from(100));
+        Ok(())
+    }
+
     // Function to record a new visitor
-    pub fn sign_guestbook(&mut self) {
+    pub fn sign_guestbook(&mut self) -> Result<(), VisitorBookErrors> {
         let visitor = msg::sender();
+        let value = msg::value();
+
+        // Require a payment of 100 wei
+        if value < self.fee.get() {
+            return Err(VisitorBookErrors::InsufficientPayment(
+                InsufficientPayment {
+                    visitor,
+                    payment: value,
+                },
+            ));
+        }
 
         // Check if the address has already visited
         if !self.has_visited.get(visitor) {
@@ -28,6 +60,24 @@ impl VisitorBook {
             // Mark as visited
             self.has_visited.setter(visitor).set(true);
         }
+
+        // Emit event
+        evm::log(Visit {
+            sender: visitor,
+            message: "Hello from ETH HUB Romania".to_string(),
+        });
+
+        // Transfer reward
+        if contract::balance() >= self.fee.get() {
+            if let Err(_) = transfer_eth(visitor, self.fee.get()) {
+                return Err(VisitorBookErrors::TransferFailed(TransferFailed {
+                    recipient: visitor,
+                    amount: self.fee.get(),
+                }));
+            }
+        }
+
+        Ok(())
     }
 
     // Get total number of unique visitors
