@@ -34,10 +34,9 @@ pub enum VisitorBookErrors {
 
 #[public]
 impl VisitorBook {
-    pub fn initialize(&mut self) -> Result<(), VisitorBookErrors> {
+    pub fn initialize(&mut self) {
         // Initialize constants
         self.fee.set(U256::from(100));
-        Ok(())
     }
 
     // Function to record a new visitor
