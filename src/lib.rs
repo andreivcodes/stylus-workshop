@@ -10,12 +10,8 @@ use stylus_sdk::{
 sol_storage! {
     #[entrypoint]
     pub struct VisitorBook {
-        // Dynamic array to store visitor addresses
         address[] visitors;
-        // Mapping to track if an address has already visited
         mapping(address => bool) has_visited;
-        // Counter for total unique visitors
-        uint256 total_visitors;
     }
 }
 
@@ -31,15 +27,12 @@ impl VisitorBook {
             self.visitors.push(visitor);
             // Mark as visited
             self.has_visited.setter(visitor).set(true);
-            // Increment total visitors
-            let current_count = self.total_visitors.get();
-            self.total_visitors.set(current_count + U256::from(1));
         }
     }
 
     // Get total number of unique visitors
     pub fn get_total_visitors(&self) -> U256 {
-        self.total_visitors.get()
+        U256::from(self.visitors.len())
     }
 
     // Get visitor at specific index
@@ -50,10 +43,5 @@ impl VisitorBook {
     // Check if an address has visited
     pub fn has_address_visited(&self, address: Address) -> bool {
         self.has_visited.get(address)
-    }
-
-    // Get all visitors (returns array length)
-    pub fn get_all_visitors_length(&self) -> U256 {
-        U256::from(self.visitors.len())
     }
 }
