@@ -40,7 +40,7 @@ impl VisitorBook {
     }
 
     // Function to record a new visitor
-    pub fn sign_guestbook(&mut self) -> Result<(), VisitorBookErrors> {
+    pub fn sign_guestbook(&mut self, message: String) -> Result<(), VisitorBookErrors> {
         let visitor = msg::sender();
         let value = msg::value();
 
@@ -65,7 +65,7 @@ impl VisitorBook {
         // Emit event
         evm::log(Visit {
             sender: visitor,
-            message: "Hello from ETH HUB Romania".to_string(),
+            message,
         });
 
         // Transfer reward
